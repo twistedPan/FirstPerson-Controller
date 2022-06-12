@@ -30,13 +30,11 @@ public class Player_FP : MonoBehaviour
     private FirstPersonCamera fpCam;
     private Transform cam;
     private Vector2 movement;
-    private bool isMoving;    
-    private bool isInteracting = false;
     private Vector3 origin;
-    //private float turnSmoothTime = 0.1f;
-    //private float turnSmoothVeloc;
+    private bool isMoving;    
 
-    private void Awake() 
+
+    void Awake() 
     {
         rb = GetComponent<Rigidbody>();
         cam = Camera.main.transform;
@@ -49,18 +47,12 @@ public class Player_FP : MonoBehaviour
         controls.Player.Sprint.performed += _ => Sprint();
         controls.Player.Sprint.canceled += _ => Sprint();
 
-        controls.Player.Look.started += ctx => FindObjectOfType<FirstPersonCamera>().Look(ctx.ReadValue<Vector2>());
-
-        controls.Player.Zoom.performed += ctx => FindObjectOfType<FirstPersonCamera>().ZoomCam(ctx.ReadValue<Vector2>());
-        //controls.Player.Zoom.performed += ctx => FindObjectOfType<FirstPersonCamera>().ZoomCam(ctx.ReadValue<Vector2>());
-
-        controls.Player.Action.performed += _ => Interact();
-        controls.Player.Action.canceled += _ => isInteracting = false;
+        controls.Player.Look.started += ctx => fpCam.Look(ctx.ReadValue<Vector2>());
 
         controls.Player.Move.performed += _ => isMoving = true; 
         controls.Player.Move.canceled += _ => isMoving = false;
 
-        controls.Player.Jump.performed += _ => Jump(); // sJumping = true; // Jump(); // 
+        controls.Player.Jump.performed += _ => Jump();
         controls.Player.Jump.canceled += _ => isJumping = false;
 
         origin = transform.position;
@@ -73,11 +65,10 @@ public class Player_FP : MonoBehaviour
 
         Vector3 direction = new Vector3(movement.x, 0.0f, movement.y);
         //Debug.Log("Input Direction: " + direction);
-        
+
         Vector3 moveDir = new Vector3(0.0f, 0.0f, 0.0f);
         
         isWalking = movement.magnitude > 0 ? true : false;
-
         isGrounded = GroundCheck();
 
         if (direction == Vector3.zero) {stepCycle = nextStep = 0;}
@@ -130,13 +121,6 @@ public class Player_FP : MonoBehaviour
         }
     }
 
-    
-    // Interact
-    public void Interact() 
-    {
-        //interactionCheck.ActionCheck();
-    }
-
 
     void Jump()
     {
@@ -144,8 +128,11 @@ public class Player_FP : MonoBehaviour
         {
             rb.velocity = Vector3.up * jumpForce;
             isJumping = true;
-        } else 
+        } 
+        else 
+        {
             isJumping = false;
+        }
     }
 
     bool GroundCheck()
@@ -161,7 +148,8 @@ public class Player_FP : MonoBehaviour
         {
             speed/=2;
             isSprinting = false;
-        } else 
+        } 
+        else 
         {
             speed*=2; 
             isSprinting = true;
@@ -198,12 +186,6 @@ public class Player_FP : MonoBehaviour
     void PlayFootStep()
     {
         // Play Footstep Audio
-    }
-
-    public void TogglePlayerMovement()
-    {
-        if (playerIsStopped) playerIsStopped = false;
-        else playerIsStopped = true;
     }
 
 
