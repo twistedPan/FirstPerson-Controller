@@ -4,11 +4,10 @@ using UnityEngine;
 
 public class FirstPersonCamera : MonoBehaviour
 {
-    public Transform lookAt;
-
-    private Camera cam;
-    private Transform camTransform;
-    private Player_FP player;
+    [Tooltip("Transform for the camera to focus on")]
+    [SerializeField] private Transform lookAt;
+    private Transform camTransform; // this transform
+    private Player_FP playerSc; // Player Script
 
     [SerializeField] private float headBobtAmt = 0.1f;
     [SerializeField] private float camSensitivityX = 3;
@@ -23,9 +22,8 @@ public class FirstPersonCamera : MonoBehaviour
     void Start()
     {
         camTransform = transform;
-        cam = camTransform.GetComponent<Camera>();
         playerHeight = lookAt.localScale.y;
-        player = lookAt.GetComponent<Player_FP>();
+        playerSc = lookAt.GetComponent<Player_FP>();
     }
 
     void LateUpdate() 
@@ -39,10 +37,16 @@ public class FirstPersonCamera : MonoBehaviour
         Quaternion rotation = Quaternion.Euler(currentX,currentY,0);
         camTransform.position = playerHead + rotation * dir;
         camTransform.LookAt(playerHead);
-        player.lookDirection = rotation * Vector3.forward;
+        
+        //* set Look Direction at Player to rotate Player Body accordingly
+        playerSc.lookDirection = rotation * Vector3.forward;
     }
 
 
+    /// <summary>
+    /// Rotates the camera according to mouse movement
+    /// </summary>
+    /// <param name="v">Vector2 - Mouse Delta</param>
     public void Look(Vector2 v) 
     {
         // Don't divide with zero
@@ -53,9 +57,14 @@ public class FirstPersonCamera : MonoBehaviour
         currentY += v.x * (1/camSensitivityY);
     }
     
+
+    /// <summary>
+    /// Calculates 
+    /// </summary>
+    /// <param name="amount">float - </param>
+    /// <param name="sprinting">bool - </param>
     public void HeadMove(float amount, bool sprinting) 
     {
-        //Debug.Log(sprinting);
         amount = Mathf.Clamp(amount, 0,1);
 
         float stepLerp = MapRange(amount, 0,1, Mathf.PI,Mathf.PI*2);
@@ -69,7 +78,7 @@ public class FirstPersonCamera : MonoBehaviour
 
 
     // Create range from value n which acts in range start1 to stop1 to new range
-    float MapRange(float n, float start1, float stop1, float start2, float stop2) 
+    private float MapRange(float n, float start1, float stop1, float start2, float stop2) 
     {
         float newval = (n - start1) / (stop1 - start1) * (stop2 - start2) + start2;
         //if (newval != ) {return newval;}

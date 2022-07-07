@@ -5,49 +5,68 @@ using UnityEngine.InputSystem;
 
 public class Player_FP : MonoBehaviour
 {
-    [SerializeField] private float speed = 250.0f;
+    [SerializeField] public float playerHeight { get; private set; } = 1.8f;
+
+    [Header("Speed")]
+    [SerializeField] private float maxSpeed = 250.0f;
+    [SerializeField] private float maxSprintSpeed = 0.0f;
+    [Tooltip("Momentum")][SerializeField] private float walkAcceleration = 6.0f;
+    [SerializeField] private float sprintAcceleration = 0.0f;
+    private float envSpeedVal = 1.0f;
+    [SerializeField] private float speed = 0;
+
+    [Space][Header("Jumping")]
     [SerializeField] private float jumpForce = 6.0f;
     [SerializeField] private float lowJumpGrav = 4.0f;
     [SerializeField] private float bigJumpGrav = 2.5f;
-    [SerializeField]private float envSpeedVal = 1.0f;
-    [SerializeField]private float stepCycle = 0.0f;
-    [SerializeField]private float nextStep = 0.0f;
-    [SerializeField]private float runstepInterval = 0.5f;
-    [SerializeField]private float stepInterval = 12.0f;
-    [SerializeField]private float death_Depht = -50.0f;
-    public bool isGrounded = true;
-    public bool isJumping = false;
-    public bool isSprinting = false;
-    public bool isWalking = false;
-    public bool isCarrying = false;
-    public bool playerIsStopped = false;
-    public int playerState = 0;
-    public float playerHeight;
-    public Vector3 lookDirection;
+
+    [Space][Header("Step Cycle")]
+    [SerializeField] private float runstepInterval = 0.5f;
+    [SerializeField] private float stepInterval = 12.0f;
+    private float stepCycle = 0.0f;
+    private float nextStep = 0.0f;
+    
+    [SerializeField] private float death_Depht = -50.0f;
 
     private Rigidbody rb;    
     private PlayerController controls;
-    private FirstPersonCamera fpCam;
+    private FirstPersonCamera cameraSc;
     private Transform cam;
-    private Vector2 movement;
-    private Vector3 origin;
-    private bool isMoving;    
+    private Vector2 moveInput = Vector2.zero;
+    private Vector3 origin = Vector3.zero;
+
+    //* States
+    public int playerState = 0;
+    private bool isGrounded = true;
+    private bool isJumping = false;
+    private bool isSprinting = false;
+    private bool isWalking = false;
+    private bool isMoving = false;    
+    private bool playerIsStopped = false;
+    public Vector3 lookDirection { get; set; } = Vector3.zero;
 
 
     void Awake() 
     {
         rb = GetComponent<Rigidbody>();
         cam = Camera.main.transform;
-        fpCam = Camera.main.GetComponent<FirstPersonCamera>();
+        cameraSc = Camera.main.GetComponent<FirstPersonCamera>();
 
+        origin = transform.position;
+        playerHeight = transform.localScale.y * 0.75f;
+
+        maxSprintSpeed = maxSpeed * 1.5f;
+        sprintAcceleration = walkAcceleration / 2;
+
+        // Inputs
         controls = new PlayerController();
-        controls.Player.Move.performed += ctx => movement = ctx.ReadValue<Vector2>();
-        controls.Player.Move.canceled += _ => movement = new Vector2(0,0);
+        controls.Player.Move.performed += ctx => moveInput = ctx.ReadValue<Vector2>();
+        controls.Player.Move.canceled += _ => moveInput = new Vector2(0,0);
 
         controls.Player.Sprint.performed += _ => Sprint();
         controls.Player.Sprint.canceled += _ => Sprint();
 
-        controls.Player.Look.started += ctx => fpCam.Look(ctx.ReadValue<Vector2>());
+        controls.Player.Look.started += ctx => cameraSc.Look(ctx.ReadValue<Vector2>());
 
         controls.Player.Move.performed += _ => isMoving = true; 
         controls.Player.Move.canceled += _ => isMoving = false;
@@ -55,33 +74,63 @@ public class Player_FP : MonoBehaviour
         controls.Player.Jump.performed += _ => Jump();
         controls.Player.Jump.canceled += _ => isJumping = false;
 
-        origin = transform.position;
-        playerHeight = transform.localScale.y*0.93f;
     }
 
     void FixedUpdate()
-    { 
-        //Debug.DrawRay(transform.position, transform.TransformDirection(Vector3.forward) * 10, Color.yellow);
+    {
+        Move();
 
-        Vector3 direction = new Vector3(movement.x, 0.0f, movement.y);
+        // if fall of map -> spawn at origin
+        if (transform.position.y <= death_Depht) { transform.position = origin; }
+    }
+
+    void Move()
+    {
+
+
+
+
+        //* Input direction
+        Vector3 direction = new Vector3(moveInput.x, 0.0f, moveInput.y).normalized;
+        Vector3 moveDir = new Vector3(0.0f, 0.0f, 0.0f);
+        //Debug.Log("Input Direction: " + direction);
+
+        //* calc moveInput speed and sprintSpeed
+        float maxMovingSpeed = isSprinting ? maxSprintSpeed : maxSpeed;
+        float currentAcceleration = isSprinting ? sprintAcceleration : walkAcceleration;
+        if (speed < maxMovingSpeed) speed = speed + currentAcceleration * Time.fixedDeltaTime;
+        speed = Mathf.Clamp(speed, 0, maxMovingSpeed);
+
+        //* calc rotation angle 
+        float targetAngle = Mathf.Atan2(direction.x,direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
+
+
+        //* Walk Direction & Orientation
+        if (direction.magnitude == 0 || playerIsStopped == true) //* -> stand still
+        { 
+            //? same result with Quaternion or without - should the player move without inputs?
+            //moveDir = Quaternion.Euler(0f,targetAngle, 0f) * Vector3.zero;
+            moveDir = Vector3.zero;
+            speed = 0;
+        } 
+        else if (direction.magnitude >= 0.1f) //* -> move by moveInput
+        {
+            moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
+
+            if (speed < 1) speed = 1.5f;
+        }
+
+
+
+        /* Vector3 direction = new Vector3(moveInput.x, 0.0f, moveInput.y);
         //Debug.Log("Input Direction: " + direction);
 
         Vector3 moveDir = new Vector3(0.0f, 0.0f, 0.0f);
         
-        isWalking = movement.magnitude > 0 ? true : false;
+        isWalking = moveInput.magnitude > 0 ? true : false;
         isGrounded = GroundCheck();
 
         if (direction == Vector3.zero) {stepCycle = nextStep = 0;}
-
-        // Jumping & Falling
-        if (rb.velocity.y < 0) // -> big Jump
-        {
-            rb.velocity += Vector3.up * Physics.gravity.y * (bigJumpGrav - 1) * Time.deltaTime;
-        } 
-        else if (rb.velocity.y > 0 && !isJumping) // -> Fall
-        {
-            rb.velocity += Vector3.up * Physics.gravity.y * (lowJumpGrav - 1) * Time.deltaTime;
-        }
 
         float targetAngle = Mathf.Atan2(direction.x,direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
         transform.rotation = Quaternion.Euler(0f, cam.eulerAngles.y, 0f);
@@ -94,33 +143,44 @@ public class Player_FP : MonoBehaviour
         else if (direction.magnitude > 0) // -> move
         {
             moveDir = Quaternion.Euler(0f,targetAngle, 0f) * Vector3.forward;
-        }    
+        }   */  
 
 
-        if(!playerIsStopped) 
+        // Jumping & Falling
+        if (rb.velocity.y < 0) // -> big Jump
         {
-            float movingSpeed = speed * envSpeedVal * Time.deltaTime;
-            rb.velocity = new Vector3(moveDir.x * movingSpeed, rb.velocity.y, moveDir.z * movingSpeed);
+            rb.velocity += Vector3.up * Physics.gravity.y * (bigJumpGrav - 1) * Time.deltaTime;
+        } 
+        else if (rb.velocity.y > 0 && !isJumping) // -> Fall
+        {
+            rb.velocity += Vector3.up * Physics.gravity.y * (lowJumpGrav - 1) * Time.deltaTime;
         }
 
 
+        // add values to player 
+        if(!playerIsStopped) 
+        {
+            //float movingSpeed = speed * envSpeedVal * Time.deltaTime;
+            //rb.velocity = new Vector3(moveDir.x * movingSpeed, rb.velocity.y, moveDir.z * movingSpeed);
+
+            //* apply movement to rigidbody
+            Vector3 input = new Vector3(moveDir.x , rb.velocity.y, moveDir.z);
+            //* stopps drifting
+            rb.MovePosition(transform.position + input * Time.fixedDeltaTime * speed);
+        }
+
+
+        // calculate head bobbing
         if (isGrounded && !playerIsStopped && isWalking) StepCycle(speed);
 
-        // Moving States
+
+        // Player Movement States
         if (!isMoving && isGrounded && !isJumping) playerState = 0; // idle
         else if (isMoving && isGrounded && !isJumping && isSprinting) playerState = 3; // sprinting
         else if (isMoving && isGrounded && !isJumping) playerState = 1; // walking
-            else if (!isGrounded) playerState = 2; // inAir
+        else if (!isGrounded) playerState = 2; // inAir
 
-        
-
-        // if fall of map spawn at origin
-        if (transform.position.y <= death_Depht)
-        {
-            transform.position = origin;
-        }
     }
-
 
     void Jump()
     {
@@ -158,9 +218,9 @@ public class Player_FP : MonoBehaviour
 
     void StepCycle(float speed)
     {
-        if (movement.magnitude > 0) 
+        if (moveInput.magnitude > 0) 
         {
-            stepCycle += (movement.magnitude + (speed*(isSprinting ? runstepInterval : 1f))/10)*
+            stepCycle += (moveInput.magnitude + (speed*(isSprinting ? runstepInterval : 1f))/10)*
                              Time.fixedDeltaTime;
         }
         else if (stepCycle > 1)
@@ -170,7 +230,7 @@ public class Player_FP : MonoBehaviour
         }
 
         float stepProgressAmount = (nextStep - stepCycle) / stepInterval;
-        fpCam.HeadMove(stepProgressAmount, isSprinting);
+        cameraSc.HeadMove(stepProgressAmount, isSprinting);
         
         if (!(stepCycle > nextStep))
         {
