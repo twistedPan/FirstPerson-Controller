@@ -59,7 +59,7 @@ public class FirstPersonCamera : MonoBehaviour
     
 
     /// <summary>
-    /// Calculates 
+    /// Calculates an up and down movement
     /// </summary>
     /// <param name="amount">float - </param>
     /// <param name="sprinting">bool - </param>
