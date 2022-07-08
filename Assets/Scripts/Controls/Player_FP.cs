@@ -5,23 +5,24 @@ using UnityEngine.InputSystem;
 
 public class Player_FP : MonoBehaviour
 {
-    [SerializeField] public float playerHeight { get; private set; } = 1.8f;
+    [SerializeField] private Transform groundCollider;
+    public float playerHeight { get; set; } = 1.8f;
 
     [Header("Speed")]
-    [SerializeField] private float maxSpeed = 250.0f;
+    [SerializeField] private float maxSpeed = 260.0f;
     [SerializeField] private float maxSprintSpeed = 0.0f;
-    [Tooltip("Momentum")][SerializeField] private float walkAcceleration = 6.0f;
+    [Tooltip("Momentum")][SerializeField] private float walkAcceleration = 130.0f;
     [SerializeField] private float sprintAcceleration = 0.0f;
     private float envSpeedVal = 1.0f;
     [SerializeField] private float speed = 0;
 
     [Space][Header("Jumping")]
-    [SerializeField] private float jumpForce = 6.0f;
+    [SerializeField] private float jumpForce = 8.0f;
     [SerializeField] private float lowJumpGrav = 4.0f;
     [SerializeField] private float bigJumpGrav = 2.5f;
 
     [Space][Header("Step Cycle")]
-    [SerializeField] private float runstepInterval = 0.5f;
+    [SerializeField] private float runstepInterval = 0.6f;
     [SerializeField] private float stepInterval = 12.0f;
     private float stepCycle = 0.0f;
     private float nextStep = 0.0f;
@@ -84,49 +85,21 @@ public class Player_FP : MonoBehaviour
         if (transform.position.y <= death_Depht) { transform.position = origin; }
     }
 
+    // Move and Rotate Player
     void Move()
     {
 
-
-
-
-        //* Input direction
-        Vector3 direction = new Vector3(moveInput.x, 0.0f, moveInput.y).normalized;
-        Vector3 moveDir = new Vector3(0.0f, 0.0f, 0.0f);
+        Vector3 direction = new Vector3(moveInput.x, 0.0f, moveInput.y);
         //Debug.Log("Input Direction: " + direction);
 
-        //* calc moveInput speed and sprintSpeed
+        Vector3 moveDir = new Vector3(0.0f, 0.0f, 0.0f);
+        
+        // calc moveInput speed and sprintSpeed
         float maxMovingSpeed = isSprinting ? maxSprintSpeed : maxSpeed;
         float currentAcceleration = isSprinting ? sprintAcceleration : walkAcceleration;
         if (speed < maxMovingSpeed) speed = speed + currentAcceleration * Time.fixedDeltaTime;
         speed = Mathf.Clamp(speed, 0, maxMovingSpeed);
 
-        //* calc rotation angle 
-        float targetAngle = Mathf.Atan2(direction.x,direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-
-
-        //* Walk Direction & Orientation
-        if (direction.magnitude == 0 || playerIsStopped == true) //* -> stand still
-        { 
-            //? same result with Quaternion or without - should the player move without inputs?
-            //moveDir = Quaternion.Euler(0f,targetAngle, 0f) * Vector3.zero;
-            moveDir = Vector3.zero;
-            speed = 0;
-        } 
-        else if (direction.magnitude >= 0.1f) //* -> move by moveInput
-        {
-            moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-
-            if (speed < 1) speed = 1.5f;
-        }
-
-
-
-        /* Vector3 direction = new Vector3(moveInput.x, 0.0f, moveInput.y);
-        //Debug.Log("Input Direction: " + direction);
-
-        Vector3 moveDir = new Vector3(0.0f, 0.0f, 0.0f);
-        
         isWalking = moveInput.magnitude > 0 ? true : false;
         isGrounded = GroundCheck();
 
@@ -143,7 +116,7 @@ public class Player_FP : MonoBehaviour
         else if (direction.magnitude > 0) // -> move
         {
             moveDir = Quaternion.Euler(0f,targetAngle, 0f) * Vector3.forward;
-        }   */  
+        }  
 
 
         // Jumping & Falling
@@ -160,13 +133,8 @@ public class Player_FP : MonoBehaviour
         // add values to player 
         if(!playerIsStopped) 
         {
-            //float movingSpeed = speed * envSpeedVal * Time.deltaTime;
-            //rb.velocity = new Vector3(moveDir.x * movingSpeed, rb.velocity.y, moveDir.z * movingSpeed);
-
-            //* apply movement to rigidbody
-            Vector3 input = new Vector3(moveDir.x , rb.velocity.y, moveDir.z);
-            //* stopps drifting
-            rb.MovePosition(transform.position + input * Time.fixedDeltaTime * speed);
+            float movingSpeed = speed * envSpeedVal * Time.deltaTime;
+            rb.velocity = new Vector3(moveDir.x * movingSpeed, rb.velocity.y, moveDir.z * movingSpeed);
         }
 
 
@@ -182,6 +150,7 @@ public class Player_FP : MonoBehaviour
 
     }
 
+    
     void Jump()
     {
         if (GroundCheck())
@@ -195,12 +164,14 @@ public class Player_FP : MonoBehaviour
         }
     }
 
+
     bool GroundCheck()
     {
         RaycastHit hit;
-        Physics.Raycast(transform.position, Vector3.down, out hit, playerHeight+0.5f);
+        Physics.Raycast(groundCollider.position, Vector3.down, out hit, 0.5f);
         return hit.collider != null;
     }
+
 
     void Sprint() 
     {
@@ -215,6 +186,7 @@ public class Player_FP : MonoBehaviour
             isSprinting = true;
         }
     }
+
 
     void StepCycle(float speed)
     {
@@ -240,10 +212,11 @@ public class Player_FP : MonoBehaviour
         nextStep = stepCycle + stepInterval;
         
         
-        PlayFootStep();
+        PlayFootStepSound();
     }
 
-    void PlayFootStep()
+
+    void PlayFootStepSound()
     {
         // Play Footstep Audio
     }
