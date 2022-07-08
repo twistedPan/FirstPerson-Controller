@@ -1,2 +1,2 @@
-# FirstPerson-Controller
- Unity Firstperson Controller using the new Inputsystem
+# First Person Controller
+Simple physics based First Person Controller using the new Inputssytem.
